@@ -11,8 +11,8 @@ impl Scene {
     }
 
 
-    pub fn add(&mut self, element : impl Drawable + 'static) {
-        self.list.push(Box::new(element));
+    pub fn add(&mut self, element : Box<dyn Drawable>) {
+        self.list.push(element);
     }
 }
 

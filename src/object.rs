@@ -1,13 +1,14 @@
 use std::fmt::Pointer;
 use std::ops::Deref;
 use std::rc::Rc;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use sdl3::render::WindowCanvas;
 use crate::drawable::Drawable;
 use crate::transformable::Transformable;
 
+
 pub struct Object {
-    primitives : Vec<Box<dyn Drawable>>,
+    primitives : RefCell<Vec<Box<dyn Drawable>>>,
     children : RefCell<Vec<Rc<Object>>>,
     position : (i32, i32),
     z: i32,
@@ -15,9 +16,15 @@ pub struct Object {
 
 impl Drawable for Object {
     fn draw(&self, window_canvas: &mut WindowCanvas) {
-        for i in &self.primitives {
+        for i in self.primitives.borrow().iter() {
             i.draw(window_canvas);
         }
+    }
+}
+
+impl Drawable for &Object {
+    fn draw(&self, window_canvas: &mut WindowCanvas) {
+        (**self).draw(window_canvas);
     }
 }
 
@@ -35,10 +42,44 @@ impl Transformable for Object {
     }
 }
 
+impl Clone for Box<dyn Drawable> {
+    fn clone(&self) -> Self {
+        (*self).clone()
+    }
+}
+
+impl Clone for Object {
+    fn clone(&self) -> Self {
+        Object {
+            primitives : RefCell::new(
+                self.primitives
+                    .borrow()
+                    .iter()
+                    .map(|primitive| {
+                        (*primitive).clone()
+                    })
+                    .collect(),
+            ),
+            children : RefCell::new(
+                self.children
+                    .borrow()
+                    .iter()
+                    .map(|child| {
+                        Rc::clone(child)
+                    })
+                    .collect(),
+            ),
+            position : self.position,
+            z : self.z,
+        }
+    }
+}
+
+
 impl Object {
     pub fn new(position : (i32, i32), z : i32 ) -> Rc<Object> {
         let mut object = Rc::new(Object {
-            primitives : Vec::new(),
+            primitives : RefCell::new(Vec::new()),
             children : RefCell::new(Vec::new()),
             position,
             z,
@@ -47,11 +88,11 @@ impl Object {
         return object;
     }
     pub fn add_primitive(&mut self, primitive : Box<dyn Drawable>) {
-        self.primitives.push(primitive);
+        self.primitives.borrow_mut().push(primitive);
     }
     pub fn add_child(&mut self, child: Rc<Object>) {
         let mut index = -1;
-        for current_child in child.children.borrow_mut().iter() {
+        for current_child in self.children.borrow_mut().iter() {
             index += 1;
             if (current_child.z > child.z ) {
 
