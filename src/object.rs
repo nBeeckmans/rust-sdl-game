@@ -77,14 +77,15 @@ impl Clone for Object {
 
 
 impl Object {
-    pub fn new(position : (i32, i32), z : i32 ) -> Rc<Object> {
-        let mut object = Rc::new(Object {
+    pub fn new(position : (i32, i32), z : i32 ) -> Rc<RefCell<Object>> {
+        let mut object = Rc::new(RefCell::new(Object {
             primitives : RefCell::new(Vec::new()),
             children : RefCell::new(Vec::new()),
             position,
             z,
-        });
-        object.children.borrow_mut().push(object.clone());
+        }));
+
+        object.borrow_mut().children.borrow_mut().push(Rc::new(object.borrow().clone()));
         return object;
     }
     pub fn add_primitive(&mut self, primitive : Box<dyn Drawable>) {
